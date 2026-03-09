@@ -1,3 +1,13 @@
-cd gateway && sh bin/run.sh root/conf.yaml &
-cd webapp && python3 -m venv venv && . venv/bin/activate && venv/bin/pip install flask requests
-flask --app app run --debug -p 5056 -h 0.0.0.0
+#!/bin/bash
+
+# Start gateway in background
+cd /app/gateway
+sh bin/run.sh root/conf.yaml &
+
+# Wait for gateway to start
+sleep 5
+
+# Start Flask
+cd /app/webapp
+export IBKR_ACCOUNT_ID="${IBKR_ACCOUNT_ID}"
+./venv/bin/python -m flask --app app run --host 0.0.0.0 --port 5056
