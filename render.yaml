@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: ibkr-web-api
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: IBKR_ACCOUNT_ID
+        value: DUP158699
+    healthCheckPath: /

@@ -10,4 +10,5 @@ sleep 5
 # Start Flask
 cd /app/webapp
 export IBKR_ACCOUNT_ID="${IBKR_ACCOUNT_ID}"
-./venv/bin/python -m flask --app app run --host 0.0.0.0 --port 5056
+PORT="${PORT:-5056}"
+./venv/bin/python -m flask --app app run --host 0.0.0.0 --port $PORT

@@ -35,4 +35,7 @@ WORKDIR /app
 
 EXPOSE 5055 5056
 
+# Render uses PORT environment variable
+ENV PORT=5056
+
 CMD ["/app/start.sh"]
