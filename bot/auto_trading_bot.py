@@ -174,16 +174,19 @@ class AutoTradingBot:
             print(f"❌ Error checking position: {e}")
             return 0
     
-    def place_order(self, side, quantity):
-        """Place order on IBKR"""
+    def place_order(self, side, cash_amount):
+        """Place order on IBKR using cash quantity (required for crypto)"""
         try:
+            # Round to 2 decimal places (IBKR requirement)
+            cash_amount = round(cash_amount, 2)
+            
             data = {
                 "orders": [{
                     "conid": BTC_CONID,
                     "orderType": "MKT",
-                    "quantity": quantity,
+                    "cashQty": cash_amount,  # Use cashQty instead of quantity for crypto
                     "side": side,
-                    "tif": "DAY"
+                    "tif": "IOC"  # Immediate or Cancel (required for crypto)
                 }]
             }
             
@@ -192,8 +195,8 @@ class AutoTradingBot:
             
             if response.status_code == 200:
                 result = response.json()
-                print(f"✅ Order placed: {side} {quantity} shares")
-                print(f"   Order ID: {result[0].get('order_id')}")
+                print(f"✅ Order placed: {side} ${cash_amount}")
+                print(f"   Response: {result}")
                 return True
             else:
                 print(f"❌ Order failed: {response.text}")
@@ -204,26 +207,37 @@ class AutoTradingBot:
             return False
     
     def execute_trade(self, signal):
-        """Execute trade based on signal"""
+        """Execute trade based on signal - always trades on signals"""
         position = self.get_ibkr_position()
         
         print(f"\n📊 Current Position: {position} BTC")
         
-        if signal == 'BUY' and position == 0:
-            print(f"🟢 EXECUTING BUY ORDER")
-            return self.place_order('BUY', TRADE_QUANTITY)
+        # Get current BTC price for cash calculation
+        btc_data = self.get_btc_data()
+        if not btc_data:
+            print("❌ Cannot get BTC price, skipping trade")
+            return False
+        
+        btc_price = btc_data['price']
+        trade_cash = TRADE_QUANTITY * btc_price  # Convert BTC to USD
+        
+        if signal == 'BUY':
+            print(f"🟢 EXECUTING BUY ORDER - Adding ${trade_cash:.2f} worth of BTC (~{TRADE_QUANTITY} BTC)")
+            return self.place_order('BUY', trade_cash)
             
         elif signal == 'SELL' and position > 0:
-            print(f"🔴 EXECUTING SELL ORDER")
-            return self.place_order('SELL', abs(position))
+            # Sell a portion or all
+            sell_btc = min(TRADE_QUANTITY, abs(position))
+            sell_cash = sell_btc * btc_price
+            print(f"🔴 EXECUTING SELL ORDER - Selling ${sell_cash:.2f} worth of BTC (~{sell_btc} BTC)")
+            return self.place_order('SELL', sell_cash)
+            
+        elif signal == 'SELL' and position <= 0:
+            print(f"⏸️  No BTC to sell, skipping SELL")
+            return False
             
         else:
-            if signal == 'BUY' and position > 0:
-                print(f"⏸️  Already have position, skipping BUY")
-            elif signal == 'SELL' and position == 0:
-                print(f"⏸️  No position to sell, skipping SELL")
-            else:
-                print(f"⏸️  Signal is HOLD, no action taken")
+            print(f"⏸️  Signal is HOLD, no action taken")
             return False
     
     def run(self, interval=60):
